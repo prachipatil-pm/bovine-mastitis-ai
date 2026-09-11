@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>🐄 Bovine Mastitis AI | SIH26109 Public Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Plotly.js for interactive milk EC bar chart -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <!-- Top Navigation / Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-icon">🐄</span>
+        <div>
+          <h1 class="brand-title">Bovine Mastitis AI</h1>
+          <p class="brand-subtitle">AI-Based Early-Risk Monitoring System · SIH26109</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span id="live-indicator" class="status-pill status-connecting">
+          <span class="pulse-dot"></span>
+          <span id="live-indicator-text">Connecting to ThingSpeak...</span>
+        </span>
+        <button id="btn-settings-toggle" class="btn-secondary btn-icon" title="Connection Settings">
+          ⚙️ Settings
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Mandatory Demonstration Mode Disclaimer -->
+    <div class="alert-box alert-disclaimer">
+      <div class="alert-icon">⚠️</div>
+      <div class="alert-content">
+        <strong>DEMONSTRATION MODE</strong> – Prototype thresholds are for demonstration and are not clinically validated for diagnosis.
+        <div class="disclaimer-sub">This prototype uses live EC sensor telemetry and synthetic demonstration data to provide early-risk indications.</div>
+      </div>
+    </div>
+
+    <!-- Data Flow Architecture Banner -->
+    <div class="flow-card">
+      <div class="flow-header">
+        <span class="flow-label">SYSTEM DATA PIPELINE</span>
+      </div>
+      <div class="flow-steps">
+        <div class="flow-step">
+          <div class="step-icon">📟</div>
+          <div class="step-name">ESP32 Hardware</div>
+          <div class="step-meta">EC Sensor Probe</div>
+        </div>
+        <div class="flow-arrow">➔ <span>Wi-Fi</span> ➔</div>
+        <div class="flow-step">
+          <div class="step-icon">☁️</div>
+          <div class="step-name">ThingSpeak IoT</div>
+          <div class="step-meta">Channel #3489897</div>
+        </div>
+        <div class="flow-arrow">➔ <span>REST API</span> ➔</div>
+        <div class="flow-step active-step">
+          <div class="step-icon">📊</div>
+          <div class="step-name">Public Dashboard</div>
+          <div class="step-meta">Real-time AI Analysis</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal / Expandable Panel -->
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-header">
+        <h3>⚙️ ThingSpeak IoT Configuration</h3>
+        <button id="btn-close-settings" class="btn-close">&times;</button>
+      </div>
+      <p class="settings-note">Modify credentials if using a private channel. Credentials persist locally in your browser.</p>
+      <div class="settings-grid">
+        <div class="form-group">
+          <label for="cfg-channel-id">Channel ID</label>
+          <input type="text" id="cfg-channel-id" value="3489897" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-api-key">Read API Key (Optional)</label>
+          <input type="password" id="cfg-api-key" placeholder="Enter key if private channel" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-field">Field Number</label>
+          <input type="number" id="cfg-field" value="1" min="1" max="8" />
+        </div>
+        <div class="form-group">
+          <label for="cfg-interval">Refresh Interval (sec)</label>
+          <input type="number" id="cfg-interval" value="15" min="5" max="60" />
+        </div>
+      </div>
+      <div class="settings-actions">
+        <button id="btn-save-settings" class="btn-primary">Save & Reconnect</button>
+        <button id="btn-reset-settings" class="btn-secondary">Reset to Defaults</button>
+      </div>
+    </div>
+
+    <!-- Live Telemetry & Risk Assessment Section -->
+    <section class="section-card telemetry-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">📡 Live EC Sensor Monitoring</h2>
+          <p class="section-subtitle">Real-time telemetry stream from ThingSpeak Field 1 (Channel 3489897)</p>
+        </div>
+        <div class="telemetry-controls">
+          <div class="refresh-countdown">
+            <span>Next refresh in: <strong id="timer-seconds">15</strong>s</span>
+            <div class="countdown-bar"><div id="countdown-progress" class="countdown-fill"></div></div>
+          </div>
+          <button id="btn-manual-refresh" class="btn-refresh" title="Refresh Now">🔄 Fetch Now</button>
+        </div>
+      </div>
+
+      <!-- Mode Switcher: Live Stream vs Simulation Demo -->
+      <div class="mode-selector">
+        <label class="mode-tab active" id="tab-live-mode">
+          <input type="radio" name="telemetry-mode" value="live" checked />
+          <span>🟢 Live Stream (ThingSpeak / ESP32)</span>
+        </label>
+        <label class="mode-tab" id="tab-demo-mode">
+          <input type="radio" name="telemetry-mode" value="demo" />
+          <span>🧪 Interactive AI Simulator (Slider)</span>
+        </label>
+      </div>
+
+      <!-- Interactive Slider (visible in Demo mode or expandable) -->
+      <div id="simulation-slider-container" class="slider-container hidden">
+        <div class="slider-header">
+          <label for="ec-slider">Interactive Simulation EC Reading: <strong id="slider-val-display">5.0</strong> mS/cm</label>
+          <div class="preset-buttons">
+            <button class="btn-preset" data-val="4.5">🟢 Preset Normal (4.5)</button>
+            <button class="btn-preset" data-val="6.2">🟡 Preset Possible (6.2)</button>
+            <button class="btn-preset" data-val="7.6">🔴 Preset High (7.6)</button>
+          </div>
+        </div>
+        <input type="range" id="ec-slider" min="3.0" max="10.0" step="0.1" value="5.0" />
+        <div class="slider-ticks">
+          <span>3.0</span>
+          <span>4.5 (Normal)</span>
+          <span>5.5 (Threshold)</span>
+          <span>7.0 (High Risk)</span>
+          <span>10.0</span>
+        </div>
+        <p class="slider-caption">The slider simulates arbitrary EC values for committee demonstration and testing AI prediction responsiveness.</p>
+      </div>
+
+      <!-- Live Value & Status Grid -->
+      <div class="telemetry-grid">
+        <!-- Live EC Metric Card -->
+        <div class="metric-card highlight-metric">
+          <div class="metric-header">
+            <span class="metric-label">CURRENT MILK EC READING</span>
+            <span id="data-source-tag" class="source-badge">Live IoT</span>
+          </div>
+          <div class="metric-value-row">
+            <span id="current-ec-value" class="metric-big-num">--</span>
+            <span class="metric-unit">mS/cm</span>
+          </div>
+          <div class="metric-footer">
+            <span id="last-updated-text">Awaiting initial packet...</span>
+          </div>
+        </div>
+
+        <!-- Risk Classification Card -->
+        <div id="risk-status-card" class="metric-card risk-card risk-unknown">
+          <div class="metric-header">
+            <span class="metric-label">DIAGNOSTIC RISK STATUS</span>
+            <span id="risk-badge" class="risk-badge">Evaluating</span>
+          </div>
+          <div class="risk-title-row">
+            <span id="risk-icon" class="risk-icon">⏳</span>
+            <span id="risk-status-text" class="risk-main-text">Analyzing Telemetry...</span>
+          </div>
+          <div id="risk-advisory" class="risk-advisory-box">
+            Awaiting sensor stream from ThingSpeak.
+          </div>
+        </div>
+
+        <!-- Connection & Hardware Status Card -->
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-label">SENSOR & TELEMETRY STATUS</span>
+            <span class="source-badge">Telemetry</span>
+          </div>
+          <div class="status-list">
+            <div class="status-item">
+              <span class="status-key">Connection:</span>
+              <span id="hw-conn-status" class="status-val text-yellow">Checking...</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">ThingSpeak Channel:</span>
+              <span class="status-val text-mono">3489897 (Field 1)</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Last Entry ID:</span>
+              <span id="hw-entry-id" class="status-val text-mono">--</span>
+            </div>
+            <div class="status-item">
+              <span class="status-key">Last Sync Timestamp:</span>
+              <span id="hw-sync-time" class="status-val text-mono">--</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Threshold Guidelines Reference -->
+      <div class="thresholds-bar">
+        <div class="th-item th-normal">
+          <span class="th-dot">🟢</span>
+          <span class="th-label">EC &lt; 5.5 mS/cm:</span>
+          <strong>NORMAL</strong>
+        </div>
+        <div class="th-item th-medium">
+          <span class="th-dot">🟡</span>
+          <span class="th-label">EC 5.5 to &lt; 7.0 mS/cm:</span>
+          <strong>POSSIBLE RISK</strong>
+        </div>
+        <div class="th-item th-high">
+          <span class="th-dot">🔴</span>
+          <span class="th-label">EC ≥ 7.0 mS/cm:</span>
+          <strong>HIGH RISK</strong>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Risk Prediction / Demonstration Section -->
+    <section class="section-card ai-section">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">🤖 AI Early-Risk Assessment & Predictive Model</h2>
+          <p class="section-subtitle">Random Forest ML classification model trained on dairy herd electrical conductivity</p>
+        </div>
+      </div>
+
+      <div class="ai-results-grid">
+        <div class="ai-stat-card">
+          <div class="ai-stat-label">PREDICTED RISK TIER</div>
+          <div id="ai-predicted-tier" class="ai-stat-val text-green">Normal</div>
+          <div class="ai-stat-desc">Derived from active EC reading via supervised classifier</div>
+        </div>
+
+        <div class="ai-stat-card">
+          <div class="ai-stat-label">PROTOTYPE MODEL CONFIDENCE SCORE</div>
+          <div id="ai-model-score" class="ai-stat-val">95.4%</div>
+          <div class="ai-stat-desc">Confidence score output from prototype classification logic</div>
+        </div>
+
+        <div class="ai-stat-card full-span">
+          <div class="ai-stat-label">CLINICAL ADVISORY & RECOMMENDATION</div>
+          <div id="ai-recommendation-box" class="ai-recommendation">
+            <span class="ai-rec-badge">🟢 Routine Monitoring</span>
+            <p id="ai-recommendation-text">Milk Electrical Conductivity is within physiological normal baseline limits (&lt; 5.5 mS/cm). Continue routine farm monitoring.</p>
+          </div>
+        </div>
+      </div>
+      <p class="ai-disclaimer-caption">
+        * The prototype model score is an experimental estimation and is NOT a clinically validated probability.
+      </p>
+    </section>
+
+    <!-- Recent Telemetry Log & Chart Section -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">🕒 Recent ThingSpeak Readings & Trend</h2>
+          <p class="section-subtitle">Last 10 telemetry samples fetched from Channel 3489897</p>
+        </div>
+      </div>
+
+      <div class="recent-readings-layout">
+        <!-- Recent Readings Chart -->
+        <div class="chart-box">
+          <div id="recent-trend-chart" style="width:100%; height:260px;"></div>
+        </div>
+
+        <!-- Recent Readings Feed Table -->
+        <div class="table-responsive small-table-container">
+          <table class="data-table" id="recent-feeds-table">
+            <thead>
+              <tr>
+                <th>Entry ID</th>
+                <th>Timestamp</th>
+                <th>EC Reading (mS/cm)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recent-feeds-body">
+              <tr>
+                <td colspan="4" class="text-center text-muted">Loading telemetry history...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Cow Selection & Individual Monitoring Section -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">🐄 Cow Selection & Profile Monitoring</h2>
+          <p class="section-subtitle">Select an individual cow from the herd to inspect baseline records</p>
+        </div>
+      </div>
+
+      <div class="cow-selector-row">
+        <label for="cow-select" class="selector-label">Choose Cow ID:</label>
+        <select id="cow-select" class="cow-dropdown"></select>
+        <button id="btn-simulate-cow" class="btn-secondary" title="Load this cow's recorded EC into simulator">
+          Apply Recorded EC to Simulator
+        </button>
+      </div>
+
+      <div id="selected-cow-alert" class="alert-box alert-success">
+        Currently monitoring: <strong id="active-cow-id">COW001</strong>
+      </div>
+
+      <div class="cow-metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">COW ID</span>
+          <span id="cow-metric-id" class="metric-mid-num">COW001</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">BREED TYPE</span>
+          <span id="cow-metric-breed" class="metric-mid-num">Holstein Cross</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">RECORDED BASELINE EC</span>
+          <span id="cow-metric-ec" class="metric-mid-num">4.2 mS/cm</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">HISTORICAL RISK LABEL</span>
+          <span id="cow-metric-risk" class="metric-mid-num text-green">Low</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Farm Overview Section -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">📊 Farm Herd Overview</h2>
+          <p class="section-subtitle">Herd-wide distribution of mastitis risk based on 20 cow dataset</p>
+        </div>
+      </div>
+
+      <div class="farm-metrics-grid">
+        <div class="metric-card">
+          <span class="metric-label">🐄 TOTAL COWS</span>
+          <span class="metric-big-num" id="stat-total-cows">20</span>
+          <span class="metric-sub">Monitored herd</span>
+        </div>
+        <div class="metric-card card-green">
+          <span class="metric-label">🟢 LOW RISK</span>
+          <span class="metric-big-num text-green" id="stat-low-risk">6</span>
+          <span class="metric-sub">EC &lt; 5.5 mS/cm (30%)</span>
+        </div>
+        <div class="metric-card card-orange">
+          <span class="metric-label">🟠 MEDIUM RISK</span>
+          <span class="metric-big-num text-orange" id="stat-medium-risk">6</span>
+          <span class="metric-sub">EC 5.5–6.9 mS/cm (30%)</span>
+        </div>
+        <div class="metric-card card-red">
+          <span class="metric-label">🔴 HIGH RISK</span>
+          <span class="metric-big-num text-red" id="stat-high-risk">8</span>
+          <span class="metric-sub">EC ≥ 7.0 mS/cm (40%)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Interactive Milk EC Across Cows Graph -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">📈 Milk EC Across Cows</h2>
+          <p class="section-subtitle">Comparative electrical conductivity with live sensor benchmark overlay</p>
+        </div>
+      </div>
+      <div id="herd-ec-chart" style="width:100%; height:420px;"></div>
+    </section>
+
+    <!-- High-Risk Cows Alert Table -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title text-red">🚨 High-Risk Cows (Action Required)</h2>
+          <p class="section-subtitle">Animals exceeding clinical EC threshold requiring veterinary check</p>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table table-striped" id="high-risk-table">
+          <thead>
+            <tr>
+              <th>Cow ID</th>
+              <th>Breed Type</th>
+              <th>Recorded Milk EC (mS/cm)</th>
+              <th>Milk Yield (L/day)</th>
+              <th>SCC (x10³ cells/mL)</th>
+              <th>Risk Label</th>
+            </tr>
+          </thead>
+          <tbody id="high-risk-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- All Cow Records Table & Download -->
+    <section class="section-card">
+      <div class="section-header-row">
+        <div>
+          <h2 class="section-title">📋 Complete Herd Records</h2>
+          <p class="section-subtitle">Historical dataset with Somatic Cell Count (SCC) and daily milk yield</p>
+        </div>
+        <button id="btn-download-csv" class="btn-primary">
+          📥 Download Farm Records (CSV)
+        </button>
+      </div>
+
+      <div class="table-filter-bar">
+        <input type="text" id="herd-search" placeholder="🔍 Search by Cow ID or Breed..." />
+        <span id="record-count-tag" class="count-tag">Showing 20 records</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="all-cows-table">
+          <thead>
+            <tr>
+              <th>Cow ID</th>
+              <th>Breed Type</th>
+              <th>Milk EC (mS/cm)</th>
+              <th>Milk Yield (L/day)</th>
+              <th>SCC (x10³ cells/mL)</th>
+              <th>Risk Label</th>
+            </tr>
+          </thead>
+          <tbody id="all-cows-body"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <p><strong>SIH26109 Prototype</strong> · AI-Based Predictive Modelling for Early Forecasting of Bovine Mastitis in Indian Dairy Farms</p>
+      <p class="footer-sub">Synthetic demonstration dataset & IoT telemetry · EC-based early-risk indication · Not a clinical diagnosis</p>
+    </div>
+  </footer>
+
+  <!-- Main Application Logic -->
+  <script src="app.js"></script>
+</body>
+</html>

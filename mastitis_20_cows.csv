@@ -1,0 +1,21 @@
+Cow_ID,Breed_Type,Milk_EC_mS_cm,Milk_Yield_L_day,SCC_thousand_cells_mL,Risk_Label
+COW001,Holstein Cross,4.2,22.0,145,Low
+COW002,Jersey Cross,4.5,21.0,180,Low
+COW003,HF Cross,4.7,23.5,165,Low
+COW004,Jersey Cross,4.9,20.5,210,Low
+COW005,HF Cross,5.1,22.5,195,Low
+COW006,Gir Cross,5.0,21.5,225,Low
+COW007,HF Cross,5.6,19.0,310,Medium
+COW008,Jersey Cross,5.8,18.5,360,Medium
+COW009,HF Cross,6.0,17.5,420,Medium
+COW010,Gir Cross,6.1,18.0,390,Medium
+COW011,HF Cross,6.3,16.5,480,Medium
+COW012,Jersey Cross,6.4,17.0,510,Medium
+COW013,HF Cross,6.7,15.5,620,High
+COW014,Jersey Cross,6.9,14.5,710,High
+COW015,HF Cross,7.1,13.5,820,High
+COW016,Gir Cross,7.3,14.0,760,High
+COW017,HF Cross,7.5,12.5,910,High
+COW018,Jersey Cross,7.7,11.5,980,High
+COW019,HF Cross,8.0,10.5,1120,High
+COW020,Gir Cross,8.2,9.5,1250,High
